@@ -1,0 +1,173 @@
+import React, { useState, useEffect, useRef } from "react";
+
+const CELL_SIZE = 20;
+const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = 400;
+const NUM_CELLS_X = CANVAS_WIDTH / CELL_SIZE;
+const NUM_CELLS_Y = CANVAS_HEIGHT / CELL_SIZE;
+const INITIAL_SNAKE_LENGTH = 3;
+const INITIAL_SNAKE_SPEED = 100;
+
+const Direction = {
+  UP: "up",
+  DOWN: "down",
+  LEFT: "left",
+  RIGHT: "right",
+};
+
+const generateRandomCell = () => {
+  return {
+    x: Math.floor(Math.random() * NUM_CELLS_X),
+    y: Math.floor(Math.random() * NUM_CELLS_Y),
+  };
+};
+
+const isCellEqual = (a, b) => {
+  return a.x === b.x && a.y === b.y;
+};
+
+const SnakeGame = () => {
+  const [snakeCells, setSnakeCells] = useState([]);
+  const [foodCell, setFoodCell] = useState({});
+  const [direction, setDirection] = useState(Direction.RIGHT);
+  const [score, setScore] = useState(0);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [snakeSpeed, setSnakeSpeed] = useState(INITIAL_SNAKE_SPEED);
+
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext("2d");
+
+    const handleKeyDown = (event) => {
+      switch (event.key) {
+        case "ArrowUp":
+          setDirection(Direction.UP);
+          break;
+        case "ArrowDown":
+          setDirection(Direction.DOWN);
+          break;
+        case "ArrowLeft":
+          setDirection(Direction.LEFT);
+          break;
+        case "ArrowRight":
+          setDirection(Direction.RIGHT);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSnakeCells(
+      Array.from({ length: INITIAL_SNAKE_LENGTH }, (_, index) => ({
+        x: NUM_CELLS_X / 2 - index,
+        y: NUM_CELLS_Y / 2,
+      }))
+    );
+    setFoodCell(generateRandomCell());
+    setScore(0);
+    setIsGameOver(false);
+    setSnakeSpeed(INITIAL_SNAKE_SPEED);
+  }, []);
+
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext("2d");
+
+    const drawCell = (cell, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        cell.x * CELL_SIZE,
+        cell.y * CELL_SIZE,
+        CELL_SIZE,
+        CELL_SIZE
+      );
+    };
+
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    snakeCells.forEach((cell, index) => {
+      drawCell(cell, index === 0 ? "green" : "lightgreen");
+    });
+
+    drawCell(foodCell, "red");
+  }, [snakeCells, foodCell]);
+
+  useEffect(() => {
+    if (isGameOver) {
+      console.log("Game over!");
+      // Display game over message to the user
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      const head = snakeCells[0];
+      let newHead;
+
+      switch (direction) {
+        case Direction.UP:
+          newHead = { x: head.x, y: head
+          .y - 1 };
+          break;
+        case Direction.DOWN:
+          newHead = { x: head.x, y: head.y + 1 };
+          break;
+        case Direction.LEFT:
+          newHead = { x: head.x - 1, y: head.y };
+          break;
+        case Direction.RIGHT:
+          newHead = { x: head.x + 1, y: head.y };
+          break;
+        default:
+          break;
+      }
+
+      if (
+        newHead.x < 0 ||
+        newHead.x >= NUM_CELLS_X ||
+        newHead.y < 0 ||
+        newHead.y >= NUM_CELLS_Y ||
+        snakeCells.some((cell) => isCellEqual(cell, newHead))
+      ) {
+        setIsGameOver(true);
+        clearInterval(timerId);
+        return;
+      }
+
+      const newSnakeCells = [newHead, ...snakeCells];
+      if (isCellEqual(newHead, foodCell)) {
+        setFoodCell(generateRandomCell());
+        setScore(score + 1);
+        setSnakeSpeed(snakeSpeed - 10);
+      } else {
+        newSnakeCells.pop();
+      }
+
+      setSnakeCells(newSnakeCells);
+    }, snakeSpeed);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, [snakeCells, foodCell, direction, isGameOver]);
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+      ></canvas>
+      <p>Score: {score}</p>
+    </>
+  );
+};
+
+export default SnakeGame;
